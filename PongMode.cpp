@@ -12,13 +12,14 @@ PongMode::PongMode() {
 
 	//set up trail as if ball has been here for 'forever':
 	ball_trail.clear();
+	// Construct and insert element at the end
 	ball_trail.emplace_back(ball, trail_length);
 	ball_trail.emplace_back(ball, 0.0f);
 
 	
 	//----- allocate OpenGL resources -----
 	{ //vertex buffer:
-		glGenBuffers(1, &vertex_buffer);
+		glGenBuffers(1, &vertex_buffer); // a name, like a pointer
 		//for now, buffer will be un-filled.
 
 		GL_ERRORS(); //PARANOIA: print out any OpenGL errors that may have happened
@@ -33,9 +34,11 @@ PongMode::PongMode() {
 
 		//set vertex_buffer as the source of glVertexAttribPointer() commands:
 		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+		// type, name
+		// data of this type -> go to the name
 
 		//set up the vertex array object to describe arrays of PongMode::Vertex:
-		glVertexAttribPointer(
+		glVertexAttribPointer(//todo
 			color_texture_program.Position_vec4, //attribute
 			3, //size
 			GL_FLOAT, //type
@@ -43,6 +46,7 @@ PongMode::PongMode() {
 			sizeof(Vertex), //stride
 			(GLbyte *)0 + 0 //offset
 		);
+		// open this buffer object
 		glEnableVertexAttribArray(color_texture_program.Position_vec4);
 		//[Note that it is okay to bind a vec3 input to a vec4 attribute -- the w component will be filled with 1.0 automatically]
 
@@ -66,6 +70,7 @@ PongMode::PongMode() {
 		);
 		glEnableVertexAttribArray(color_texture_program.TexCoord_vec2);
 
+		// TODO
 		//done referring to vertex_buffer, so unbind it:
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -84,13 +89,16 @@ PongMode::PongMode() {
 
 		//upload a 1x1 image of solid white to the texture:
 		glm::uvec2 size = glm::uvec2(1,1);
+		// glm u8vec4 color
 		std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+		// generate a 2d texture
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
 		//set filtering and wrapping parameters:
 		//(it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// s-x, t-y
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
@@ -121,11 +129,12 @@ bool PongMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 	if (evt.type == SDL_MOUSEMOTION) {
 		//convert mouse from window pixels (top-left origin, +y is down) to clip space ([-1,1]x[-1,1], +y is up):
-		glm::vec2 clip_mouse = glm::vec2(
+		glm::vec2 clip_mouse = glm::vec2( // todo
 			(evt.motion.x + 0.5f) / window_size.x * 2.0f - 1.0f,
 			(evt.motion.y + 0.5f) / window_size.y *-2.0f + 1.0f
 		);
 		left_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
+		left_paddle.x = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).x;
 	}
 
 	return false;
@@ -137,24 +146,25 @@ void PongMode::update(float elapsed) {
 
 	//----- paddle update -----
 
-	{ //right player ai:
-		ai_offset_update -= elapsed;
-		if (ai_offset_update < elapsed) {
-			//update again in [0.5,1.0) seconds:
-			ai_offset_update = (mt() / float(mt.max())) * 0.5f + 0.5f;
-			ai_offset = (mt() / float(mt.max())) * 2.5f - 1.25f;
-		}
-		if (right_paddle.y < ball.y + ai_offset) {
-			right_paddle.y = std::min(ball.y + ai_offset, right_paddle.y + 2.0f * elapsed);
-		} else {
-			right_paddle.y = std::max(ball.y + ai_offset, right_paddle.y - 2.0f * elapsed);
-		}
-	}
+//	{ //right player ai:
+//		ai_offset_update -= elapsed;
+//		if (ai_offset_update < elapsed) {
+//			//update again in [0.5,1.0) seconds:
+//			ai_offset_update = (mt() / float(mt.max())) * 0.5f + 0.5f;
+//			ai_offset = (mt() / float(mt.max())) * 2.5f - 1.25f;
+//		}
+//		if (right_paddle.y < ball.y + ai_offset) {
+//			right_paddle.y = std::min(ball.y + ai_offset, right_paddle.y + 2.0f * elapsed);
+//		} else {
+//			right_paddle.y = std::max(ball.y + ai_offset, right_paddle.y - 2.0f * elapsed);
+//		}
+//	}
+//
+//	//clamp paddles to court:
+//	right_paddle.y = std::max(right_paddle.y, -court_radius.y + paddle_radius.y);
+//	right_paddle.y = std::min(right_paddle.y,  court_radius.y - paddle_radius.y);
 
-	//clamp paddles to court:
-	right_paddle.y = std::max(right_paddle.y, -court_radius.y + paddle_radius.y);
-	right_paddle.y = std::min(right_paddle.y,  court_radius.y - paddle_radius.y);
-
+    // set position inside of the court
 	left_paddle.y = std::max(left_paddle.y, -court_radius.y + paddle_radius.y);
 	left_paddle.y = std::min(left_paddle.y,  court_radius.y - paddle_radius.y);
 
@@ -203,36 +213,40 @@ void PongMode::update(float elapsed) {
 		}
 	};
 	paddle_vs_ball(left_paddle);
-	paddle_vs_ball(right_paddle);
+//	paddle_vs_ball(right_paddle);
 
 	//court walls:
-	if (ball.y > court_radius.y - ball_radius.y) {
-		ball.y = court_radius.y - ball_radius.y;
-		if (ball_velocity.y > 0.0f) {
-			ball_velocity.y = -ball_velocity.y;
-		}
-	}
-	if (ball.y < -court_radius.y + ball_radius.y) {
-		ball.y = -court_radius.y + ball_radius.y;
-		if (ball_velocity.y < 0.0f) {
-			ball_velocity.y = -ball_velocity.y;
-		}
-	}
 
-	if (ball.x > court_radius.x - ball_radius.x) {
+	if (ball.y > court_radius.y) {
+		ball.y = -court_radius.y + ball_radius.y;
+		ball_velocity.y = 2.0f;
+	}else if (ball.y < -court_radius.y) {
+		ball.y = court_radius.y - ball_radius.y;
+		ball_velocity.y = 0;
+	}else if (ball.x > court_radius.x - ball_radius.x) {
 		ball.x = court_radius.x - ball_radius.x;
 		if (ball_velocity.x > 0.0f) {
 			ball_velocity.x = -ball_velocity.x;
 			left_score += 1;
 		}
-	}
-	if (ball.x < -court_radius.x + ball_radius.x) {
+	}else if (ball.x < -court_radius.x + ball_radius.x) {
 		ball.x = -court_radius.x + ball_radius.x;
 		if (ball_velocity.x < 0.0f) {
 			ball_velocity.x = -ball_velocity.x;
-			right_score += 1;
 		}
 	}
+
+	// add grativity
+	ball_velocity.y -= elapsed * 3;
+
+	// ---- target ----
+	target_duration += elapsed;
+	if (target_duration >= limit){
+		target_duration = 0.0f;
+		target.x = - target_court_radius.x + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.x);
+		target.y = - target_court_radius.y + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.y);
+	}
+
 
 	//----- rainbow trails -----
 
@@ -241,7 +255,7 @@ void PongMode::update(float elapsed) {
 		t.z += elapsed;
 	}
 	//store fresh location at back of ball trail:
-	ball_trail.emplace_back(ball, 0.0f);
+	ball_trail.emplace_back(ball, 1.0f);
 
 	//trim any too-old locations from back of trail:
 	//NOTE: since trail drawing interpolates between points, only removes back element if second-to-back element is too old:
@@ -255,6 +269,7 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 	#define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
 	const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0x171714ff);
 	const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0xd1bb54ff);
+	const glm::u8vec4 target_color = HEX_TO_U8VEC4(0xd1bb5488);
 	const glm::u8vec4 shadow_color = HEX_TO_U8VEC4(0x604d29ff);
 	const std::vector< glm::u8vec4 > rainbow_colors = {
 		HEX_TO_U8VEC4(0x604d29ff), HEX_TO_U8VEC4(0x624f29fc), HEX_TO_U8VEC4(0x69542df2),
@@ -280,15 +295,23 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 
 	//inline helper function for rectangle drawing:
 	auto draw_rectangle = [&vertices](glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color) {
-		//draw rectangle as two CCW-oriented triangles:
+		//draw rectangle as two CCW-oriented triangles: counterclockwise
+		// right bottom
 		vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 		vertices.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 		vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 
+		// left top
 		vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 		vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 		vertices.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
 	};
+
+	// auto draw_circle = [&vertices](glm::vec const &center, float const &radius, glm::u8vec4 const &color) {
+	// 	for (int a = 0; a < 360; a++){
+	// 		vertices.emplace_back(glm::vec3(center.x))
+	// 	}
+	// }
 
 	//shadows for everything (except the trail):
 
@@ -299,7 +322,7 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 	draw_rectangle(glm::vec2( 0.0f,-court_radius.y-wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
 	draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
 	draw_rectangle(left_paddle+s, paddle_radius, shadow_color);
-	draw_rectangle(right_paddle+s, paddle_radius, shadow_color);
+//	draw_rectangle(right_paddle+s, paddle_radius, shadow_color);
 	draw_rectangle(ball+s, ball_radius, shadow_color);
 
 	//ball's trail:
@@ -325,6 +348,9 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 
 	//solid objects:
 
+	//target:
+	draw_rectangle(target, target_radius, target_color);
+
 	//walls:
 	draw_rectangle(glm::vec2(-court_radius.x-wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
 	draw_rectangle(glm::vec2( court_radius.x+wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
@@ -333,7 +359,7 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 
 	//paddles:
 	draw_rectangle(left_paddle, paddle_radius, fg_color);
-	draw_rectangle(right_paddle, paddle_radius, fg_color);
+//	draw_rectangle(right_paddle, paddle_radius, fg_color);
 	
 
 	//ball:
