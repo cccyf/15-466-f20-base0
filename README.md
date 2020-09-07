@@ -1,6 +1,6 @@
 # kaleidoscope
 
-Author:
+Author: YC
 
 Design: 
 
