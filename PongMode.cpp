@@ -146,24 +146,6 @@ void PongMode::update(float elapsed) {
 
 	//----- paddle update -----
 
-//	{ //right player ai:
-//		ai_offset_update -= elapsed;
-//		if (ai_offset_update < elapsed) {
-//			//update again in [0.5,1.0) seconds:
-//			ai_offset_update = (mt() / float(mt.max())) * 0.5f + 0.5f;
-//			ai_offset = (mt() / float(mt.max())) * 2.5f - 1.25f;
-//		}
-//		if (right_paddle.y < ball.y + ai_offset) {
-//			right_paddle.y = std::min(ball.y + ai_offset, right_paddle.y + 2.0f * elapsed);
-//		} else {
-//			right_paddle.y = std::max(ball.y + ai_offset, right_paddle.y - 2.0f * elapsed);
-//		}
-//	}
-//
-//	//clamp paddles to court:
-//	right_paddle.y = std::max(right_paddle.y, -court_radius.y + paddle_radius.y);
-//	right_paddle.y = std::min(right_paddle.y,  court_radius.y - paddle_radius.y);
-
     // set position inside of the court
 	left_paddle.y = std::max(left_paddle.y, -court_radius.y + paddle_radius.y);
 	left_paddle.y = std::min(left_paddle.y,  court_radius.y - paddle_radius.y);
@@ -239,7 +221,7 @@ void PongMode::update(float elapsed) {
 	// for
 	auto it = target_set.begin();
 	while(it!=target_set.end()){
-		if (it->second.x < target_radius_max){
+		if (it->second.first.x < target_radius_max){
 			it++;
 			continue;
 		}
@@ -259,11 +241,6 @@ void PongMode::update(float elapsed) {
 			ball_velocity.x = 0.5f;
 
 			continue;
-		// if (!hit_target){
-		// 	hit_target = true;
-		// 	ball_exists = false;
-		// 	left_score += 1;
-		// }
 		}
 		it++;
 	}
@@ -272,55 +249,26 @@ void PongMode::update(float elapsed) {
 	// add grativity
 	ball_velocity.y -= elapsed * 2;
 
-	// ---- target ----
-	// grow in another random position
-	// if (!target_exists){
-	// 	target_duration += elapsed;
-	// 	target_radius.x = target_duration / limit * target_radius_max;
-	// 	target_radius.y = target_duration / limit * target_radius_max;
-	// 	if (target_duration >= limit){
-	// 		target_duration = 0.0f;
-	// 		target_exists = true;
-	// 		hit_target = false;
-	// 		ball.y = court_radius.y - ball_radius.y;
-	// 		ball.x = -court_radius.x + (float) (rand() % 100) / 100.0f * (2 * (court_radius.x - ball_radius.x));
-	// 		ball_exists = true;
-	// 		ball_velocity.y = 0.f;
-	// 		ball_velocity.x = 0.5f;
-	// 	}
-	// }
-	// // decrease the size
-	// if (target_exists && hit_target){
-	// 	disappear_duration += elapsed;
-	// 	target_radius.y = (disappear_duration_limit - disappear_duration)/disappear_duration_limit * target_radius_max;
-	// 	target_radius.x = (disappear_duration_limit - disappear_duration)/disappear_duration_limit * target_radius_max;
-	// 	if (disappear_duration >= disappear_duration_limit){
-	// 		target.x = - target_court_radius.x + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.x);
-	// 		target.y = - target_court_radius.y + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.y);
-	// 		target_exists = false;
-	// 		hit_target = false;
-	// 		target_duration = 0.f;
-	// 	}
-	// }
-	
-
+	// target
 	if (target_count < target_count_max){
 		float x = - target_court_radius.x + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.x);
 		float y = - target_court_radius.y + (float) (rand() % 100) / 100.0f * (2 * target_court_radius.y);
-		target_set.insert(Target(glm::vec2(x, y), glm::vec2(0.f, 0.f)));
+		int rand_pos = rand()%10;
+		target_set.insert(Target(glm::vec2(x, y), std::pair<glm::vec2, int>(glm::vec2(0.f, 0.f), rand_pos)));
 		target_count += 1;
 	}
 
 	std::set<Target, TargetCompare> updated;
 	for (it = target_set.begin(); it!=target_set.end(); it++){
-		glm::vec2 it_radius = it->second;
+		glm::vec2 it_radius = it->second.first;
 		if (it_radius.x >= target_radius_max){
 			updated.insert(Target(it->first, it->second));
 			continue;
 		}
 		updated.insert(Target(it->first, 
-		glm::vec2(it_radius.x + elapsed / enlarge_duration_limit * target_radius_max,
-					it_radius.y + elapsed / enlarge_duration_limit * target_radius_max)));
+		std::pair<glm::vec2, int>(glm::vec2(it_radius.x + elapsed / enlarge_duration_limit * target_radius_max,
+					it_radius.y + elapsed / enlarge_duration_limit * target_radius_max),
+					it->second.second)));
 	}
 
 	target_set.clear();
@@ -331,13 +279,13 @@ void PongMode::update(float elapsed) {
 	updated.clear();
 
 	for(it = target_disappearing_set.begin(); it !=target_disappearing_set.end(); it++){
-		glm::vec2 it_radius = it->second;
+		glm::vec2 it_radius = it->second.first;
 		if (it_radius.x <= 0){
 			continue;
 		}
-		updated.insert(Target(it->first, glm::vec2(
+		updated.insert(Target(it->first, std::pair<glm::vec2, int>(glm::vec2(
 		it_radius.x - elapsed / disappear_duration_limit * target_radius_max,
-		it_radius.y - elapsed / disappear_duration_limit * target_radius_max)));
+		it_radius.y - elapsed / disappear_duration_limit * target_radius_max), it->second.second)));
 	}
 
 	target_disappearing_set.clear();
@@ -366,19 +314,18 @@ void PongMode::update(float elapsed) {
 void PongMode::draw(glm::uvec2 const &drawable_size) {
 	//some nice colors from the course web page:
 	#define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
-	const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0x171714ff);
-	const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0xd1bb54ff);
-	const glm::u8vec4 target_color = HEX_TO_U8VEC4(0xd1bb5488);
-	const glm::u8vec4 shadow_color = HEX_TO_U8VEC4(0x604d29ff);
+	// const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0x171714ff);
+	const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0xf7f2ebff);
+	// const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0xd1bb54ff);
+	const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0x38a3a5ff);
+	// const glm::u8vec4 target_color = HEX_TO_U8VEC4(0xdb717688);
+	const glm::u8vec4 ball_color = HEX_TO_U8VEC4(0x38a3a5ff);
+	const glm::u8vec4 shadow_color = HEX_TO_U8VEC4(0x878580ff);
 	const std::vector< glm::u8vec4 > rainbow_colors = {
-		HEX_TO_U8VEC4(0x604d29ff), HEX_TO_U8VEC4(0x624f29fc), HEX_TO_U8VEC4(0x69542df2),
-		HEX_TO_U8VEC4(0x6a552df1), HEX_TO_U8VEC4(0x6b562ef0), HEX_TO_U8VEC4(0x6b562ef0),
-		HEX_TO_U8VEC4(0x6d572eed), HEX_TO_U8VEC4(0x6f592feb), HEX_TO_U8VEC4(0x725b31e7),
-		HEX_TO_U8VEC4(0x745d31e3), HEX_TO_U8VEC4(0x755e32e0), HEX_TO_U8VEC4(0x765f33de),
-		HEX_TO_U8VEC4(0x7a6234d8), HEX_TO_U8VEC4(0x826838ca), HEX_TO_U8VEC4(0x977840a4),
-		HEX_TO_U8VEC4(0x96773fa5), HEX_TO_U8VEC4(0xa07f4493), HEX_TO_U8VEC4(0xa1814590),
-		HEX_TO_U8VEC4(0x9e7e4496), HEX_TO_U8VEC4(0xa6844887), HEX_TO_U8VEC4(0xa9864884),
-		HEX_TO_U8VEC4(0xad8a4a7c),
+		HEX_TO_U8VEC4(0xff595eff), HEX_TO_U8VEC4(0xffca3aff), HEX_TO_U8VEC4(0xf8961eff),
+		HEX_TO_U8VEC4(0x908e6dff), HEX_TO_U8VEC4(0xf9c74fff), HEX_TO_U8VEC4(0x90be6dff),
+		HEX_TO_U8VEC4(0x43aa8bff), HEX_TO_U8VEC4(0xd64045ff), HEX_TO_U8VEC4(0x8ac926ff),
+		HEX_TO_U8VEC4(0x6f7092ff), 
 	};
 	#undef HEX_TO_U8VEC4
 
@@ -421,15 +368,15 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 
 	auto it = target_set.begin();
 	while (it!=target_set.end()){
-		draw_circle(it->first, it->second.x*2, target_color);
-		draw_circle(it->first, it->second.x, bg_color);
+		draw_circle(it->first, it->second.first.x*2, rainbow_colors[it->second.second]);
+		draw_circle(it->first, it->second.first.x, bg_color);
 		it++;
 	}
 
 	it = target_disappearing_set.begin();
 	while (it!=target_disappearing_set.end()){
-		draw_circle(it->first, it->second.x*2, target_color);
-		draw_circle(it->first, it->second.x, bg_color);
+		draw_circle(it->first, it->second.first.x*2, rainbow_colors[it->second.second]);
+		draw_circle(it->first, it->second.first.x, bg_color);
 		it++;
 	}
 
@@ -446,32 +393,6 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 	
 	draw_circle(ball+s, ball_radius.x, shadow_color);
 
-	//ball's trail:
-	// if (ball_trail.size() >= 2) {
-	// 	//start ti at second element so there is always something before it to interpolate from:
-	// 	std::deque< glm::vec3 >::iterator ti = ball_trail.begin() + 1;
-	// 	//draw trail from oldest-to-newest:
-	// 	for (uint32_t i = uint32_t(rainbow_colors.size())-1; i < rainbow_colors.size(); --i) {
-	// 		//time at which to draw the trail element:
-	// 		float t = (i + 1) / float(rainbow_colors.size()) * trail_length;
-	// 		//advance ti until 'just before' t:
-	// 		while (ti != ball_trail.end() && ti->z > t) ++ti;
-	// 		//if we ran out of tail, stop drawing:
-	// 		if (ti == ball_trail.end()) break;
-	// 		//interpolate between previous and current trail point to the correct time:
-	// 		glm::vec3 a = *(ti-1);
-	// 		glm::vec3 b = *(ti);
-	// 		glm::vec2 at = (t - a.z) / (b.z - a.z) * (glm::vec2(b) - glm::vec2(a)) + glm::vec2(a);
-	// 		//draw:
-	// 		draw_rectangle(at, ball_radius, rainbow_colors[i]);
-	// 	}
-	// }
-
-	//solid objects:
-
-	//target:
-	// draw_rectangle(target, target_radius, target_color);
-
 	//walls:
 	draw_rectangle(glm::vec2(-court_radius.x-wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
 	draw_rectangle(glm::vec2( court_radius.x+wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
@@ -479,12 +400,11 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 	draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius), glm::vec2(court_radius.x, wall_radius), fg_color);
 
 	//paddles:
-	draw_rectangle(left_paddle, paddle_radius, fg_color);
-//	draw_rectangle(right_paddle, paddle_radius, fg_color);
+	draw_rectangle(left_paddle, paddle_radius, ball_color);
 	
 
 	//ball:
-	draw_circle(ball, ball_radius.x, fg_color);
+	draw_circle(ball, ball_radius.x, ball_color);
 
 	//scores:
 	glm::vec2 score_radius = glm::vec2(0.1f, 0.1f);
