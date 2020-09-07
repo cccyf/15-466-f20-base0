@@ -7,10 +7,18 @@
 
 #include <vector>
 #include <deque>
+#include <set>
 
 /*
  * PongMode is a game mode that implements a single-player game of Pong.
  */
+
+typedef std::pair<glm::vec2, glm::vec2> Target;
+struct TargetCompare {
+	bool operator() (const Target& a, const Target& b) const{
+		return a.first.x <= b.first.x;
+	}
+};
 
 struct PongMode : Mode {
 	PongMode();
@@ -31,14 +39,24 @@ struct PongMode : Mode {
 //	glm::vec2 right_paddle = glm::vec2( court_radius.x - 0.5f, 0.0f);
 
 	// hit target to get scores
-	glm::vec2 target = glm::vec2(0.0f, 0.0f);
-	glm::vec2 target_radius = glm::vec2(0.5f, 0.5f);
-	float target_duration = 0.0f;
-	float limit = 3.0f;
-	glm::vec2 target_court_radius = glm::vec2(court_radius.x - target_radius.x, court_radius.y - target_radius.y);
+	// bool hit_target = false;
+	std::set<Target, TargetCompare> target_set;
+	std::set<Target, TargetCompare> target_disappearing_set;
+	int target_count = 0;
+	int target_count_max = 5;
+	// glm::vec2 target = glm::vec2(0.0f, 0.0f);
+	// glm::vec2 target_radius = glm::vec2(0.3f, 0.3f);
+	float target_radius_max = 0.3f;
+	// float target_duration = 0.0f;
+	float enlarge_duration_limit = 3.0f;
+	// bool target_exists = true;
+	float disappear_duration_limit = 1.5f;
+	// float disappear_duration = 0.f;
+	glm::vec2 target_court_radius = glm::vec2(court_radius.x - target_radius_max, court_radius.y - target_radius_max);
 
 	glm::vec2 ball = glm::vec2(0.0f, 0.0f);
 	glm::vec2 ball_velocity = glm::vec2(-1.0f, 0.0f);
+	// bool ball_exists = true;
 
 	uint32_t left_score = 0;
 	uint32_t right_score = 0;
