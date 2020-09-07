@@ -1,8 +1,12 @@
-# (TODO: your game's title)
+# kaleidoscope
 
-Author: (TODO: your name)
+Author:
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: 
+
+- Colorful targets will be generated at random places
+- The paddle can be moved anywhere to hit the ball
+- Gravity is simulated
 
 Screen Shot:
 
@@ -10,6 +14,6 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+- Score points by hitting the ball into the colorful holes with the paddle controlled by the mouse
 
 This game was built with [NEST](NEST.md).
